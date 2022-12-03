@@ -29,3 +29,12 @@ export enum token {
   FUNCTION = "FUNCTION",
   LET = "LET",
 }
+
+const keyword = new Map<string, TokenType>([
+  ["fn", token.FUNCTION],
+  ["let", token.LET],
+]);
+
+export function LookupIdent(ident: string): TokenType {
+  return keyword.has(ident) ? (keyword.get(ident) as string) : token.IDENT;
+}

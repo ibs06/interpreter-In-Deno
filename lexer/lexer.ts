@@ -1,5 +1,5 @@
-import { len } from "../util/help.ts";
-import { Token, token, TokenType } from "../token/token.ts";
+import { len } from "../deps.ts";
+import { Token, token, TokenType, LookupIdent } from "../token/token.ts";
 
 export interface Lexer {
   input: string;
@@ -8,10 +8,23 @@ export interface Lexer {
   ch: number; // 타입단언을 써야되나?
   readChar(): void;
   NextToken(): Token;
+  readIdentifier(): string;
+  skipWhitespace(): void;
+  readNumber(): string;
 }
 
 export function New(input: string): Lexer {
-  const l = { input, position: 0, readPosition: 0, ch: 0, readChar, NextToken };
+  const l = {
+    input,
+    position: 0,
+    readPosition: 0,
+    ch: 0,
+    readChar,
+    NextToken,
+    readIdentifier,
+    skipWhitespace,
+    readNumber,
+  };
   l.readChar();
   return l;
 }
@@ -25,6 +38,7 @@ function readChar(this: Lexer): void {
   } else {
     l.ch = l.input[l.readPosition].charCodeAt(0);
   }
+
   // 읽는 포지션 갱신
   l.position = l.readPosition;
   l.readPosition += 1;
@@ -33,6 +47,9 @@ function readChar(this: Lexer): void {
 function NextToken(this: Lexer): Token {
   const l = this;
   var tok: Token;
+
+  l.skipWhitespace();
+
   switch (l.ch) {
     case "=".charCodeAt(0):
       tok = newToken(token.ASSIGN, l.ch);
@@ -71,11 +88,62 @@ function NextToken(this: Lexer): Token {
       break;
 
     default:
-      console.log("::: NextToken function l.ch is not found");
-      tok = { Type: token.ILLEGAL, Literal: "ILLEGAL" };
+      if (isLetter(l.ch)) {
+        const Literal = l.readIdentifier();
+        // isLetter isDigit만 return문이 있다. readChar를 내부적으로 돌리기 때문
+        return (tok = { Type: LookupIdent(Literal), Literal });
+      } else if (isDigit(l.ch)) {
+        return (tok = { Type: token.INT, Literal: l.readNumber() });
+      } else {
+        console.log("::: NextToken function l.ch is not found");
+        tok = { Type: token.ILLEGAL, Literal: "ILLEGAL" };
+      }
   }
   l.readChar();
   return tok;
+}
+
+function readIdentifier(this: Lexer): string {
+  const l = this;
+  const position = l.position;
+  while (isLetter(l.ch)) {
+    l.readChar();
+  }
+  return l.input.slice(position, l.position);
+}
+
+function readNumber(this: Lexer): string {
+  const l = this;
+  const position = l.position;
+  while (isDigit(l.ch)) {
+    l.readChar();
+  }
+
+  return l.input.slice(position, l.position);
+}
+
+function skipWhitespace(this: Lexer): void {
+  const l = this;
+  while (
+    l.ch == " ".charCodeAt(0) ||
+    l.ch == "\t".charCodeAt(0) ||
+    l.ch == "\n".charCodeAt(0) ||
+    l.ch == "\r".charCodeAt(0)
+  ) {
+    l.readChar();
+  }
+}
+
+function isLetter(ch: number): boolean {
+  return (
+    ("a".charCodeAt(0) <= ch && ch <= "z".charCodeAt(0)) ||
+    ("A".charCodeAt(0) <= ch && ch <= "Z".charCodeAt(0)) ||
+    ch == "_".charCodeAt(0)
+  );
+}
+
+function isDigit(ch: number): boolean {
+  return "0".charCodeAt(0) <= ch && ch <= "9".charCodeAt(0);
 }
 
 function newToken(tokenType: TokenType, ch: number): Token {
