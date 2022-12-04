@@ -11,6 +11,7 @@ export interface Lexer {
   readIdentifier(): string;
   skipWhitespace(): void;
   readNumber(): string;
+  peekChar(): number;
 }
 
 export function New(input: string): Lexer {
@@ -24,6 +25,7 @@ export function New(input: string): Lexer {
     readIdentifier,
     skipWhitespace,
     readNumber,
+    peekChar,
   };
   l.readChar();
   return l;
@@ -52,7 +54,52 @@ function NextToken(this: Lexer): Token {
 
   switch (l.ch) {
     case "=".charCodeAt(0):
-      tok = newToken(token.ASSIGN, l.ch);
+      // ==이면
+      if (l.peekChar() == "=".charCodeAt(0)) {
+        const ch = l.ch;
+        l.readChar();
+        const Literal = String.fromCharCode(ch) + String.fromCharCode(l.ch);
+        tok = { Type: token.EQ, Literal };
+      } else {
+        tok = newToken(token.ASSIGN, l.ch);
+      }
+
+      break;
+
+    case "+".charCodeAt(0):
+      tok = newToken(token.PLUS, l.ch);
+      break;
+
+    case "-".charCodeAt(0):
+      tok = newToken(token.MINUS, l.ch);
+      break;
+
+    case "!".charCodeAt(0):
+      // !- 이면
+      if (l.peekChar() == "=".charCodeAt(0)) {
+        const ch = l.ch;
+        l.readChar();
+        const Literal = String.fromCharCode(ch) + String.fromCharCode(l.ch);
+        tok = { Type: token.NOT_EQ, Literal };
+      } else {
+        tok = newToken(token.BANG, l.ch);
+      }
+      break;
+
+    case "/".charCodeAt(0):
+      tok = newToken(token.SLASH, l.ch);
+      break;
+
+    case "*".charCodeAt(0):
+      tok = newToken(token.ASTERISK, l.ch);
+      break;
+
+    case "<".charCodeAt(0):
+      tok = newToken(token.LT, l.ch);
+      break;
+
+    case ">".charCodeAt(0):
+      tok = newToken(token.GT, l.ch);
       break;
 
     case ";".charCodeAt(0):
@@ -69,10 +116,6 @@ function NextToken(this: Lexer): Token {
 
     case ",".charCodeAt(0):
       tok = newToken(token.COMMA, l.ch);
-      break;
-
-    case "+".charCodeAt(0):
-      tok = newToken(token.PLUS, l.ch);
       break;
 
     case "{".charCodeAt(0):
@@ -131,6 +174,15 @@ function skipWhitespace(this: Lexer): void {
     l.ch == "\r".charCodeAt(0)
   ) {
     l.readChar();
+  }
+}
+function peekChar(this: Lexer): number {
+  const l = this;
+
+  if (l.readPosition >= len(l.input)) {
+    return 0;
+  } else {
+    return l.input[l.readPosition].charCodeAt(0);
   }
 }
 
