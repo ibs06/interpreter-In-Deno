@@ -43,6 +43,10 @@ export enum token {
   IF = "IF",
   ELSE = "ELSE",
   RETURN = "RETURN",
+
+  // 최초 Null 설정값(타입단언을 계속 쓰지 않기 위해 추가)
+  // p.curToken as Token
+  NIL = "NIL",
 }
 
 const keyword = new Map<string, TokenType>([
@@ -57,4 +61,11 @@ const keyword = new Map<string, TokenType>([
 
 export function LookupIdent(ident: string): TokenType {
   return keyword.has(ident) ? (keyword.get(ident) as string) : token.IDENT;
+}
+
+export function tokenNew(Type: TokenType, Literal: string): Token {
+  return {
+    Type,
+    Literal,
+  };
 }
