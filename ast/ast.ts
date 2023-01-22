@@ -14,7 +14,7 @@ export interface NodeImpl extends NodeObj {
   type: "NodeImpl";
 }
 
-export type Statement = LetStatement;
+export type Statement = LetStatement | ReturnStatement;
 export type Expression = Identifier;
 
 // 메소드만 공통으로 가지고 있는 값
@@ -63,18 +63,33 @@ export function LetStatementNew(token: Token): LetStatement {
   return {
     type: "LetStatement",
     Token: token,
-    statementNode: ls_statementNode,
-    TokenLiteral: ls_TokenLiteral,
+    statementNode: function (this: LetStatement) {},
+    TokenLiteral: function (this: LetStatement) {
+      const ls = this;
+      return ls.Token.Literal;
+    },
+  };
+}
+
+export interface ReturnStatement extends StatementObj {
+  type: "ReturnStatement";
+  Token: Token;
+  ReturnValue?: Expression;
+}
+
+export function ReturnStatementNew(token: Token): ReturnStatement {
+  return {
+    type: "ReturnStatement",
+    Token: token,
+    statementNode: function (this: ReturnStatement) {},
+    TokenLiteral: function (this: ReturnStatement) {
+      const ls = this;
+      return ls.Token.Literal;
+    },
   };
 }
 
 // 함수명 충돌발생
-function ls_statementNode(this: LetStatement): void {}
-
-function ls_TokenLiteral(this: LetStatement): string {
-  const ls = this;
-  return ls.Token.Literal;
-}
 
 export interface Identifier extends ExpressionObj {
   type: "Identifier";

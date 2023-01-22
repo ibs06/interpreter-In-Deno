@@ -9,10 +9,15 @@ export interface Parser {
   errors: string[];
   curToken: token.Token;
   peekToken: token.Token;
+
   nextToken(): void;
+
   ParseProgram(): ast.Program;
   parseStatement(): ast.Statement | null;
+
   parseLetStatement(): ast.LetStatement | null;
+  parseReturnStatement(): ast.ReturnStatement;
+
   curTokenIs(t: token.TokenType): boolean;
   peekTokenIs(t: token.TokenType): boolean;
   expectPeek(t: token.TokenType): boolean;
@@ -23,13 +28,18 @@ export interface Parser {
 export function New(l: Lexer): Parser {
   const p = {
     l,
+
     errors: [],
     curToken: token.tokenNew(token.token.NIL, "NIL"),
     peekToken: token.tokenNew(token.token.NIL, "NIL"),
+
     nextToken,
     ParseProgram,
+
     parseStatement,
     parseLetStatement,
+    parseReturnStatement,
+
     curTokenIs,
     peekTokenIs,
     expectPeek,
@@ -75,6 +85,8 @@ function parseStatement(this: Parser): ast.Statement | null {
   switch (p.curToken?.Type) {
     case token.token.LET:
       return p.parseLetStatement();
+    case token.token.RETURN:
+      return p.parseReturnStatement();
     default:
       return null;
   }
@@ -102,6 +114,17 @@ function parseLetStatement(this: Parser): ast.LetStatement | null {
     p.nextToken();
   }
 
+  return stmt;
+}
+
+function parseReturnStatement(this: Parser) {
+  const p = this;
+  const stmt = ast.ReturnStatementNew(p.curToken);
+  p.nextToken();
+  // TODO: 세미콜론을 만날 때까지 표현식을 건너띈다.
+  while (!p.curTokenIs(token.token.SEMICOLON)) {
+    p.nextToken();
+  }
   return stmt;
 }
 

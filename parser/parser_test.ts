@@ -56,7 +56,11 @@ Deno.test("parser 식별자, 예약자 없는 버전", async () => {
   for (const index in tests) {
     const tt = tests[index];
     const stmt = program.Statements[index];
-    if (!testLetStatement(stmt, tt.expectedIdentifier)) {
+    // Golang 유연한 타입전환 안되서 단언 추가
+    if (
+      stmt.type == "LetStatement" &&
+      !testLetStatement(stmt, tt.expectedIdentifier)
+    ) {
     }
   }
 });
@@ -100,3 +104,42 @@ function checkParserErrors(p: parser.Parser) {
   }
   t.fail("checkParserErrors..");
 }
+
+Deno.test("parser 리턴문 테스트 ", async () => {
+  const input = `
+  return 5;
+  return 10;
+  return 993322;
+  `;
+
+  const l = lexer.New(input);
+
+  const p = parser.New(l);
+
+  const program = p.ParseProgram();
+  checkParserErrors(p);
+
+  if (len(program.Statements) != 3) {
+    chai.fail(
+      `프로그램 명령문 3개 명령문이 아님 len(program.Statements):${len(
+        program.Statements
+      )}`
+    );
+  }
+
+  for (const index in program.Statements) {
+    const t = chai;
+    const stmt = program.Statements[index];
+
+    const ok = stmt.type === "ReturnStatement";
+    if (!ok) {
+      t.fail(`stmt not *ast.ReturnStatement. got=${stmt}`);
+    }
+
+    if (stmt.TokenLiteral() != "return") {
+      t.fail(
+        `returnStmt.TokenLiteral not 'return', got=${stmt.TokenLiteral()}`
+      );
+    }
+  }
+});
