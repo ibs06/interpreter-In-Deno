@@ -6,6 +6,7 @@ import * as ast from "../ast/ast.ts";
 export interface Parser {
   l: Lexer;
 
+  errors: string[];
   curToken: token.Token;
   peekToken: token.Token;
   nextToken(): void;
@@ -15,11 +16,14 @@ export interface Parser {
   curTokenIs(t: token.TokenType): boolean;
   peekTokenIs(t: token.TokenType): boolean;
   expectPeek(t: token.TokenType): boolean;
+  Errors(): string[];
+  peekError(t: token.TokenType): void;
 }
 
 export function New(l: Lexer): Parser {
   const p = {
     l,
+    errors: [],
     curToken: token.tokenNew(token.token.NIL, "NIL"),
     peekToken: token.tokenNew(token.token.NIL, "NIL"),
     nextToken,
@@ -29,6 +33,8 @@ export function New(l: Lexer): Parser {
     curTokenIs,
     peekTokenIs,
     expectPeek,
+    Errors,
+    peekError,
   };
 
   /*
@@ -48,8 +54,6 @@ export function ParseProgram(this: Parser): ast.Program {
   const program = ast.ProgramNew();
 
   while (p.curToken.Type != token.token.EOF) {
-    console.log(`P1111 :`);
-
     const stmt = p.parseStatement();
     if (stmt != null) {
       program.Statements.push(stmt);
@@ -117,6 +121,19 @@ function expectPeek(this: Parser, t: token.TokenType): boolean {
     p.nextToken();
     return true;
   } else {
+    // 토큰 예측 오류시 에러 로깅 추가
+    p.peekError(t);
     return false;
   }
+}
+
+function Errors(this: Parser): string[] {
+  const p = this;
+  return p.errors;
+}
+
+function peekError(this: Parser, t: token.TokenType) {
+  const p = this;
+  const msg = `expected next token to be ${t}, got ${p.peekToken.Type}`;
+  p.errors.push(msg);
 }

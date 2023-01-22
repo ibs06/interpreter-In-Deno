@@ -16,11 +16,23 @@ Deno.test("parser 식별자, 예약자 없는 버전", async () => {
   let foobar = 838383;
   `;
 
+  // const input = `
+  // let x  5;
+  // let = 10;
+  // let 838383;
+  // `;
+  // 에러로깅 확인용
+  //   parser has 3 errors
+  // parser error: expected next token to be =, got INT
+  // parser error: expected next token to be IDENT, got =
+  // parser error: expected next token to be IDENT, got INT
+
   const l = lexer.New(input);
 
   const p = parser.New(l);
 
   const program = p.ParseProgram();
+  checkParserErrors(p);
 
   // nil 세팅이 안되서 배열값으로 체크
   if (len(program.Statements) == 0) {
@@ -74,4 +86,17 @@ function testLetStatement(s: ast.LetStatement, name: string): boolean {
   }
 
   return true;
+}
+
+function checkParserErrors(p: parser.Parser) {
+  const t = chai;
+  const errors = p.Errors();
+  if (len(errors) == 0) {
+    return;
+  }
+  console.error(`parser has ${len(errors)} errors`);
+  for (const msg of errors) {
+    console.error(`parser error: ${msg}`);
+  }
+  t.fail("checkParserErrors..");
 }
