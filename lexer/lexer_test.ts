@@ -146,9 +146,9 @@ Deno.test("TestNextToken 식별자 예약어 있는 버전", async () => {
         `tests[${tt.expectedLiteral}] - 토큰타입 틀림. 예상타입=[${tt.expectedType}] 결과타입=[${tok.Type}]`
       );
     } else {
-      console.log(
-        `tests[${tt.expectedLiteral}] - 토큰타입 성공. 예상타입=[${tt.expectedType}] 결과타입=[${tok.Type}]`
-      );
+      // console.log(
+      //   `tests[${tt.expectedLiteral}] - 토큰타입 성공. 예상타입=[${tt.expectedType}] 결과타입=[${tok.Type}]`
+      // );
     }
   }
 });

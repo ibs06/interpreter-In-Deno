@@ -1,8 +1,9 @@
 import { Token } from "../token/token.ts";
+import { len } from "../deps.ts";
 
 // typescript 유니온타입(이거나 타입) 개념으로 해결
 // 최상위 추상구문트리 노드 타입
-type Node = NodeImpl | Statement | Expression;
+export type Node = NodeImpl | Statement | Expression;
 
 export interface NodeObj {
   //type: "NodeObj"시 오류발생하여 두단계로 나눔
@@ -11,16 +12,18 @@ export interface NodeObj {
 
 export interface NodeImpl extends NodeObj {
   type: "NodeImpl";
-  TokenLiteral(): string;
 }
 
-export interface Statement extends NodeObj {
-  type: "Statement";
+export type Statement = LetStatement;
+export type Expression = Identifier;
+
+// 메소드만 공통으로 가지고 있는 값
+// Statement, Expression 두개의 구분은 statementNode, expressionNode 속성 보유여부로 구분하고 type으로 직접 개별 타입을 식별함.
+export interface StatementObj extends NodeObj {
   statementNode(): void;
 }
 
-export interface Expression extends NodeObj {
-  type: "Expression";
+export interface ExpressionObj extends NodeObj {
   expressionNode(): void;
 }
 
@@ -41,14 +44,15 @@ export function ProgramNew(): Program {
 
 function TokenLiteral(this: Program): string {
   const p = this;
-  if (p.Statements.length > 0) {
+  if (len(p.Statements) > 0) {
     return p.Statements[0].TokenLiteral();
   } else {
     return "";
   }
 }
 
-export interface LetStatement extends Statement {
+export interface LetStatement extends StatementObj {
+  type: "LetStatement";
   Token: Token;
   // token외에는 aa.Name(x); a.Value(x); 이런 식의 코드 진행이 가능하도록 선택변수로 처리
   Name?: Identifier;
@@ -57,7 +61,7 @@ export interface LetStatement extends Statement {
 
 export function LetStatementNew(token: Token): LetStatement {
   return {
-    type: "Statement",
+    type: "LetStatement",
     Token: token,
     statementNode: ls_statementNode,
     TokenLiteral: ls_TokenLiteral,
@@ -72,14 +76,15 @@ function ls_TokenLiteral(this: LetStatement): string {
   return ls.Token.Literal;
 }
 
-export interface Identifier extends Expression {
+export interface Identifier extends ExpressionObj {
+  type: "Identifier";
   Token: Token;
   Value?: string;
 }
 
 export function IdentifierNew(token: Token): Identifier {
   return {
-    type: "Expression",
+    type: "Identifier",
     Token: token,
     expressionNode: i_expressionNode,
     TokenLiteral: i_TokenLiteral,

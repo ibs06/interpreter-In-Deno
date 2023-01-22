@@ -47,7 +47,9 @@ export function ParseProgram(this: Parser): ast.Program {
   const p = this;
   const program = ast.ProgramNew();
 
-  while (!(p.curToken.Type != token.token.EOF)) {
+  while (p.curToken.Type != token.token.EOF) {
+    console.log(`P1111 :`);
+
     const stmt = p.parseStatement();
     if (stmt != null) {
       program.Statements.push(stmt);
@@ -66,11 +68,9 @@ function nextToken(this: Parser): void {
 
 function parseStatement(this: Parser): ast.Statement | null {
   const p = this;
-
   switch (p.curToken?.Type) {
     case token.token.LET:
-      return null;
-    // return p.parseLetStatement();
+      return p.parseLetStatement();
     default:
       return null;
   }

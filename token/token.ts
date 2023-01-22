@@ -45,7 +45,7 @@ export enum token {
   RETURN = "RETURN",
 
   // 최초 Null 설정값(타입단언을 계속 쓰지 않기 위해 추가)
-  // p.curToken as Token
+  // ex) (p.curToken as Token).Type or p.curToken?.Type
   NIL = "NIL",
 }
 
