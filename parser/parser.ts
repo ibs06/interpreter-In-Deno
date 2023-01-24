@@ -3,12 +3,28 @@ import * as token from "../token/token.ts";
 import { Lexer } from "../lexer/lexer.ts";
 import * as ast from "../ast/ast.ts";
 
+export enum Precedences {
+  LOWEST = 1,
+  EQUALS,
+  LESSGREATER,
+  SUM,
+  PRODUCT,
+  PREFIX,
+  CALL,
+}
+
+type prefixParseFn = (p: Parser) => ast.Expression;
+type infixParseFn = (p: Parser, left: ast.Expression) => ast.Expression;
+
 export interface Parser {
   l: Lexer;
 
   errors: string[];
   curToken: token.Token;
   peekToken: token.Token;
+
+  prefixParseFns: Map<token.TokenType, prefixParseFn>;
+  infixParseFns: Map<token.TokenType, infixParseFn>;
 
   nextToken(): void;
 
@@ -17,12 +33,17 @@ export interface Parser {
 
   parseLetStatement(): ast.LetStatement | null;
   parseReturnStatement(): ast.ReturnStatement;
+  parseExpressionStatement(): ast.ExpressionStatement;
+  parseExpression(precedence: Precedences): ast.Expression | undefined;
 
   curTokenIs(t: token.TokenType): boolean;
   peekTokenIs(t: token.TokenType): boolean;
   expectPeek(t: token.TokenType): boolean;
   Errors(): string[];
   peekError(t: token.TokenType): void;
+
+  registerPrefix(tokenType: token.TokenType, fn: prefixParseFn): void;
+  registerInfix(tokenType: token.TokenType, fn: prefixParseFn): void;
 }
 
 export function New(l: Lexer): Parser {
@@ -33,19 +54,30 @@ export function New(l: Lexer): Parser {
     curToken: token.tokenNew(token.token.NIL, "NIL"),
     peekToken: token.tokenNew(token.token.NIL, "NIL"),
 
+    prefixParseFns: new Map<token.TokenType, prefixParseFn>(),
+    infixParseFns: new Map<token.TokenType, infixParseFn>(),
+
     nextToken,
     ParseProgram,
 
     parseStatement,
     parseLetStatement,
     parseReturnStatement,
+    parseExpressionStatement,
+    parseExpression,
+    parseIdentifier,
 
     curTokenIs,
     peekTokenIs,
     expectPeek,
     Errors,
     peekError,
+
+    registerPrefix,
+    registerInfix,
   };
+
+  p.registerPrefix(token.token.IDENT, parseIdentifier);
 
   /*
   두번 호출 이유
@@ -88,7 +120,7 @@ function parseStatement(this: Parser): ast.Statement | null {
     case token.token.RETURN:
       return p.parseReturnStatement();
     default:
-      return null;
+      return p.parseExpressionStatement();
   }
 }
 
@@ -100,9 +132,7 @@ function parseLetStatement(this: Parser): ast.LetStatement | null {
     return null;
   }
 
-  // Go 처럼 유연하게 안된다.. ;;
-  const identifier = ast.IdentifierNew(p.curToken);
-  identifier.Value = p.curToken.Literal;
+  const identifier = ast.IdentifierNew(p.curToken, p.curToken.Literal);
 
   stmt.Name = identifier;
 
@@ -126,6 +156,44 @@ function parseReturnStatement(this: Parser) {
     p.nextToken();
   }
   return stmt;
+}
+
+function parseExpressionStatement(this: Parser): ast.ExpressionStatement {
+  const p = this;
+  const stmt = ast.ExpressionStatementNew(p.curToken);
+  stmt.Expression = p.parseExpression(Precedences.LOWEST);
+
+  if (p.peekTokenIs(token.token.SEMICOLON)) {
+    p.nextToken();
+  }
+
+  return stmt;
+}
+
+function parseExpression(
+  this: Parser,
+  precedence: Precedences
+): ast.Expression | undefined {
+  const p = this;
+  if (p.prefixParseFns.has(p.curToken.Type)) {
+    const prefix: prefixParseFn = p.prefixParseFns.get(p.curToken.Type)!;
+    // prefix, infix호출시 Golang 리시버에 해당하는 *Parser p파라미터로 전달하기!
+    return prefix(p);
+  } else {
+    return undefined;
+  }
+}
+
+// function parseIdentifier(this: Parser): ast.Expression {
+//   const p = this;
+//
+//  오류 발생 맵에 함수를 넣었다가 복구 시키면 p가 살아나지 않음. Golang에서는 리시버로 인해서 가능한듯?  그냥 파라미터로 던져주자!!
+//  Cannot read properties of undefined (reading 'p.curToken')
+//
+//   return ast.IdentifierNew(p.curToken, p.curToken.Literal);
+// }
+function parseIdentifier(p: Parser): ast.Expression {
+  return ast.IdentifierNew(p.curToken, p.curToken.Literal);
 }
 
 function curTokenIs(this: Parser, t: token.TokenType): boolean {
@@ -159,4 +227,21 @@ function peekError(this: Parser, t: token.TokenType) {
   const p = this;
   const msg = `expected next token to be ${t}, got ${p.peekToken.Type}`;
   p.errors.push(msg);
+}
+
+function registerPrefix(
+  this: Parser,
+  tokenType: token.TokenType,
+  fn: prefixParseFn
+) {
+  const p = this;
+  p.prefixParseFns.set(tokenType, fn);
+}
+function registerInfix(
+  this: Parser,
+  tokenType: token.TokenType,
+  fn: infixParseFn
+) {
+  const p = this;
+  p.infixParseFns.set(tokenType, fn);
 }

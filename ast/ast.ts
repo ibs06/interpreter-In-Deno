@@ -3,18 +3,13 @@ import { len } from "../deps.ts";
 
 // typescript 유니온타입(이거나 타입) 개념으로 해결
 // 최상위 추상구문트리 노드 타입
-export type Node = NodeImpl | Statement | Expression;
+export type Node = Program | Statement | Expression;
 
 export interface NodeObj {
-  //type: "NodeObj"시 오류발생하여 두단계로 나눔
   TokenLiteral(): string;
 }
 
-export interface NodeImpl extends NodeObj {
-  type: "NodeImpl";
-}
-
-export type Statement = LetStatement | ReturnStatement;
+export type Statement = LetStatement | ReturnStatement | ExpressionStatement;
 export type Expression = Identifier;
 
 // 메소드만 공통으로 가지고 있는 값
@@ -27,7 +22,8 @@ export interface ExpressionObj extends NodeObj {
   expressionNode(): void;
 }
 
-export interface Program extends NodeImpl {
+export interface Program extends NodeObj {
+  type: "Program";
   Statements: Statement[];
 }
 
@@ -36,7 +32,7 @@ export interface Program extends NodeImpl {
 // Deno : const program = ast.ProgramNew();
 export function ProgramNew(): Program {
   return {
-    type: "NodeImpl",
+    type: "Program",
     Statements: [],
     TokenLiteral,
   };
@@ -51,10 +47,11 @@ function TokenLiteral(this: Program): string {
   }
 }
 
+/** 선언문 */
 export interface LetStatement extends StatementObj {
   type: "LetStatement";
   Token: Token;
-  // token외에는 aa.Name(x); a.Value(x); 이런 식의 코드 진행이 가능하도록 선택변수로 처리
+  // token외에는 a.Name("nm"); a.Value("val"); 이런 식의 코드 진행이 가능하도록 선택변수로 처리
   Name?: Identifier;
   Value?: Expression;
 }
@@ -88,26 +85,40 @@ export function ReturnStatementNew(token: Token): ReturnStatement {
     },
   };
 }
-
-// 함수명 충돌발생
-
-export interface Identifier extends ExpressionObj {
-  type: "Identifier";
+export interface ExpressionStatement extends StatementObj {
+  type: "ExpressionStatement";
   Token: Token;
-  Value?: string;
+  Expression?: Expression;
 }
 
-export function IdentifierNew(token: Token): Identifier {
+export function ExpressionStatementNew(token: Token): ExpressionStatement {
   return {
-    type: "Identifier",
+    type: "ExpressionStatement",
     Token: token,
-    expressionNode: i_expressionNode,
-    TokenLiteral: i_TokenLiteral,
+    statementNode: function (this: ExpressionStatement) {},
+    TokenLiteral: function (this: ExpressionStatement) {
+      const ls = this;
+      return ls.Token.Literal;
+    },
   };
 }
 
-function i_expressionNode(this: Identifier): void {}
-function i_TokenLiteral(this: Identifier): string {
-  const i = this;
-  return i.Token.Literal;
+/** 표현식 */
+export interface Identifier extends ExpressionObj {
+  type: "Identifier";
+  Token: Token;
+  Value: string;
+}
+
+export function IdentifierNew(token: Token, value: string): Identifier {
+  return {
+    type: "Identifier",
+    Token: token,
+    Value: value,
+    expressionNode: function (this: Identifier) {},
+    TokenLiteral: function (this: Identifier) {
+      const i = this;
+      return i.Token.Literal;
+    },
+  };
 }

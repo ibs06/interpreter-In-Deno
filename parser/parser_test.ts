@@ -143,3 +143,59 @@ Deno.test("parser 리턴문 테스트 ", async () => {
     }
   }
 });
+
+Deno.test("parser 식별자파서 테스트 ", async () => {
+  const input = `foobar;`;
+
+  const l = lexer.New(input);
+
+  const p = parser.New(l);
+
+  const program = p.ParseProgram();
+  checkParserErrors(p);
+
+  if (len(program.Statements) != 1) {
+    chai.fail(
+      `프로그램 명령문 1개 명령문이 아님 len(program.Statements):${len(
+        program.Statements
+      )}`
+    );
+  }
+
+  for (const index in program.Statements) {
+    const t = chai;
+    const stmt = program.Statements[index];
+
+    const ok = stmt.type === "ExpressionStatement";
+    if (!ok) {
+      t.fail(`stmt not *ast.ExpressionStatement. got=${stmt}`);
+    } else {
+      // console.log(`stmt`, stmt);
+      // stmt {
+      //   type: "ExpressionStatement",
+      //   Token: { Type: "IDENT", Literal: "foobar" },
+      //   statementNode: [Function: statementNode],
+      //   TokenLiteral: [Function: TokenLiteral],
+      //   Expression: {
+      //     type: "Identifier",
+      //     Token: { Type: "IDENT", Literal: "foobar" },
+      //     Value: "foobar",
+      //     expressionNode: [Function: expressionNode],
+      //     TokenLiteral: [Function: TokenLiteral]
+      //   }
+      // }
+      if (!stmt.Expression) {
+        t.fail(`exp not *ast.Identifier, got=${stmt.Expression}`);
+      } else {
+        if (stmt.Expression.Value !== "foobar") {
+          t.fail(`ident.Value error, got=${stmt.Expression.Value}`);
+        }
+        if (stmt.Expression.TokenLiteral() !== "foobar") {
+          t.fail(
+            `ident.TokenLiteral() error, got=${stmt.Expression.TokenLiteral()}`
+          );
+        }
+      }
+    }
+  }
+});
