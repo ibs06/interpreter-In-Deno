@@ -78,6 +78,7 @@ export function New(l: Lexer): Parser {
   };
 
   p.registerPrefix(token.token.IDENT, parseIdentifier);
+  p.registerPrefix(token.token.INT, parseIntegerLiteral);
 
   /*
   두번 호출 이유
@@ -194,6 +195,15 @@ function parseExpression(
 // }
 function parseIdentifier(p: Parser): ast.Expression {
   return ast.IdentifierNew(p.curToken, p.curToken.Literal);
+}
+
+function parseIntegerLiteral(p: Parser): ast.Expression {
+  const value = parseInt(p.curToken.Literal);
+  if (isNaN(value)) {
+    const msg = `could not parse ${value} to integer`;
+    p.errors.push(msg);
+  }
+  return ast.IntegerLiteralNew(p.curToken, value);
 }
 
 function curTokenIs(this: Parser, t: token.TokenType): boolean {

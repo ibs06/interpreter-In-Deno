@@ -10,7 +10,7 @@ export interface NodeObj {
 }
 
 export type Statement = LetStatement | ReturnStatement | ExpressionStatement;
-export type Expression = Identifier;
+export type Expression = Identifier | IntegerLiteral;
 
 // 메소드만 공통으로 가지고 있는 값
 // Statement, Expression 두개의 구분은 statementNode, expressionNode 속성 보유여부로 구분하고 type으로 직접 개별 타입을 식별함.
@@ -113,6 +113,24 @@ export interface Identifier extends ExpressionObj {
 export function IdentifierNew(token: Token, value: string): Identifier {
   return {
     type: "Identifier",
+    Token: token,
+    Value: value,
+    expressionNode: function (this: Identifier) {},
+    TokenLiteral: function (this: Identifier) {
+      const i = this;
+      return i.Token.Literal;
+    },
+  };
+}
+
+export interface IntegerLiteral extends ExpressionObj {
+  type: "IntegerLiteral";
+  Token: Token;
+  Value: number;
+}
+export function IntegerLiteralNew(token: Token, value: number): IntegerLiteral {
+  return {
+    type: "IntegerLiteral",
     Token: token,
     Value: value,
     expressionNode: function (this: Identifier) {},
