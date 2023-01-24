@@ -41,6 +41,7 @@ export interface Parser {
   expectPeek(t: token.TokenType): boolean;
   Errors(): string[];
   peekError(t: token.TokenType): void;
+  noPrefixParseFnError(t: token.TokenType): void;
 
   registerPrefix(tokenType: token.TokenType, fn: prefixParseFn): void;
   registerInfix(tokenType: token.TokenType, fn: prefixParseFn): void;
@@ -72,6 +73,7 @@ export function New(l: Lexer): Parser {
     expectPeek,
     Errors,
     peekError,
+    noPrefixParseFnError,
 
     registerPrefix,
     registerInfix,
@@ -79,6 +81,8 @@ export function New(l: Lexer): Parser {
 
   p.registerPrefix(token.token.IDENT, parseIdentifier);
   p.registerPrefix(token.token.INT, parseIntegerLiteral);
+  p.registerPrefix(token.token.BANG, parsePrefixExpression);
+  p.registerPrefix(token.token.MINUS, parsePrefixExpression);
 
   /*
   두번 호출 이유
@@ -181,6 +185,7 @@ function parseExpression(
     // prefix, infix호출시 Golang 리시버에 해당하는 *Parser p파라미터로 전달하기!
     return prefix(p);
   } else {
+    p.noPrefixParseFnError(p.curToken.Type);
     return undefined;
   }
 }
@@ -204,6 +209,15 @@ function parseIntegerLiteral(p: Parser): ast.Expression {
     p.errors.push(msg);
   }
   return ast.IntegerLiteralNew(p.curToken, value);
+}
+
+function parsePrefixExpression(p: Parser): ast.Expression {
+  const expression = ast.PrefixExpressionNew(p.curToken, p.curToken.Literal);
+
+  p.nextToken();
+  expression.Right = p.parseExpression(Precedences.PREFIX);
+
+  return expression;
 }
 
 function curTokenIs(this: Parser, t: token.TokenType): boolean {
@@ -236,6 +250,12 @@ function Errors(this: Parser): string[] {
 function peekError(this: Parser, t: token.TokenType) {
   const p = this;
   const msg = `expected next token to be ${t}, got ${p.peekToken.Type}`;
+  p.errors.push(msg);
+}
+
+function noPrefixParseFnError(this: Parser, t: token.TokenType) {
+  const p = this;
+  const msg = `no prefix parse function for ${t}`;
   p.errors.push(msg);
 }
 

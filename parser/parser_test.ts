@@ -187,13 +187,17 @@ Deno.test("parser 식별자파서 테스트 ", async () => {
       if (!stmt.Expression) {
         t.fail(`exp not *ast.Identifier, got=${stmt.Expression}`);
       } else {
-        if (stmt.Expression.Value !== "foobar") {
-          t.fail(`ident.Value error, got=${stmt.Expression.Value}`);
-        }
-        if (stmt.Expression.TokenLiteral() !== "foobar") {
-          t.fail(
-            `ident.TokenLiteral() error, got=${stmt.Expression.TokenLiteral()}`
-          );
+        if (stmt.Expression.type !== "Identifier") {
+          t.fail(`exp not Identifier got=${stmt.Expression.type}`);
+        } else {
+          if (stmt.Expression.Value !== "foobar") {
+            t.fail(`ident.Value error, got=${stmt.Expression.Value}`);
+          }
+          if (stmt.Expression.TokenLiteral() !== "foobar") {
+            t.fail(
+              `ident.TokenLiteral() error, got=${stmt.Expression.TokenLiteral()}`
+            );
+          }
         }
       }
     }
@@ -245,16 +249,130 @@ Deno.test("parser 정수표현식 파서 테스트 ", async () => {
       } else {
         if (stmt.Expression.type !== "IntegerLiteral") {
           t.fail(`exp not IntegerLiteral got=${stmt.Expression.type}`);
-        }
-        if (stmt.Expression.Value !== 5) {
-          t.fail(`ident.Value error, got=${stmt.Expression.Value}`);
-        }
-        if (stmt.Expression.TokenLiteral() !== "5") {
-          t.fail(
-            `ident.TokenLiteral() error, got=${stmt.Expression.TokenLiteral()}`
-          );
+        } else {
+          if (stmt.Expression.Value !== 5) {
+            t.fail(`ident.Value error, got=${stmt.Expression.Value}`);
+          }
+          if (stmt.Expression.TokenLiteral() !== "5") {
+            t.fail(
+              `ident.TokenLiteral() error, got=${stmt.Expression.TokenLiteral()}`
+            );
+          }
         }
       }
     }
   }
 });
+
+Deno.test("parser 전위연산자 파서 테스트 ", async () => {
+  const tests: {
+    input: string;
+    operator: string;
+    integerValue: number;
+  }[] = [
+    { input: "!5", operator: "!", integerValue: 5 },
+    { input: "-15", operator: "-", integerValue: 15 },
+  ];
+
+  for (const tt of tests) {
+    const l = lexer.New(tt.input);
+
+    const p = parser.New(l);
+
+    const program = p.ParseProgram();
+    checkParserErrors(p);
+
+    if (len(program.Statements) != 1) {
+      chai.fail(
+        `프로그램 명령문 1개 명령문이 아님 len(program.Statements):${len(
+          program.Statements
+        )}`
+      );
+    }
+    for (const index in program.Statements) {
+      const t = chai;
+      const stmt = program.Statements[index];
+
+      const ok = stmt.type === "ExpressionStatement";
+      if (!ok) {
+        t.fail(`stmt not *ast.ExpressionStatement. got=${stmt}`);
+      } else {
+        // console.log(`stmt`, stmt);
+        // stmt {
+        //   type: "ExpressionStatement",
+        //   Token: { Type: "!", Literal: "!" },
+        //   statementNode: [Function: statementNode],
+        //   TokenLiteral: [Function: TokenLiteral],
+        //   Expression: {
+        //     type: "PrefixExpression",
+        //     Token: { Type: "!", Literal: "!" },
+        //     Operator: "!",
+        //     expressionNode: [Function: expressionNode],
+        //     TokenLiteral: [Function: TokenLiteral],
+        //     Right: {
+        //       type: "IntegerLiteral",
+        //       Token: { Type: "INT", Literal: "5" },
+        //       Value: 5,
+        //       expressionNode: [Function: expressionNode],
+        //       TokenLiteral: [Function: TokenLiteral]
+        //     }
+        //   }
+        // }
+        // stmt {
+        //   type: "ExpressionStatement",
+        //   Token: { Type: "-", Literal: "-" },
+        //   statementNode: [Function: statementNode],
+        //   TokenLiteral: [Function: TokenLiteral],
+        //   Expression: {
+        //     type: "PrefixExpression",
+        //     Token: { Type: "-", Literal: "-" },
+        //     Operator: "-",
+        //     expressionNode: [Function: expressionNode],
+        //     TokenLiteral: [Function: TokenLiteral],
+        //     Right: {
+        //       type: "IntegerLiteral",
+        //       Token: { Type: "INT", Literal: "15" },
+        //       Value: 15,
+        //       expressionNode: [Function: expressionNode],
+        //       TokenLiteral: [Function: TokenLiteral]
+        //     }
+        //   }
+        // }
+        if (!stmt.Expression) {
+          t.fail(`exp not *ast.PrefixExpression, got=${stmt.Expression}`);
+        } else {
+          if (stmt.Expression.type !== "PrefixExpression") {
+            t.fail(`exp not PrefixExpression got=${stmt.Expression.type}`);
+          } else {
+            if (stmt.Expression.Operator !== tt.operator) {
+              t.fail(
+                `exp.Operater is not ${tt.operator}, got=${stmt.Expression.Operator}`
+              );
+            }
+            if (
+              stmt.Expression.Right &&
+              !testIntegerLiteral(stmt.Expression.Right, tt.integerValue)
+            ) {
+              t.fail(`ident.testIntegerLiteral() error}`);
+            }
+          }
+        }
+      }
+    }
+  }
+});
+
+function testIntegerLiteral(s: ast.Expression, value: number): boolean {
+  const t = chai;
+  if (s.type !== "IntegerLiteral") {
+    t.fail(`testIntegerLiteral not 'IntegerLiteral'. got=${s.type}`);
+    return false;
+  } else {
+    if (s.Value !== value) {
+      t.fail(`integ.value not ${value}. got=${s.Value}`);
+      return false;
+    }
+  }
+
+  return true;
+}
