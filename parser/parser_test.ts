@@ -376,3 +376,74 @@ function testIntegerLiteral(s: ast.Expression, value: number): boolean {
 
   return true;
 }
+
+Deno.test("parser 중위연산자 파서 테스트 ", async () => {
+  const tests: {
+    input: string;
+    leftValue: number;
+    operator: string;
+    rightValue: number;
+  }[] = [
+    { input: "5 + 5", leftValue: 5, operator: "+", rightValue: 5 },
+    { input: "5 - 5", leftValue: 5, operator: "-", rightValue: 5 },
+    { input: "5 * 5", leftValue: 5, operator: "*", rightValue: 5 },
+    { input: "5 / 5", leftValue: 5, operator: "/", rightValue: 5 },
+    { input: "5 > 5", leftValue: 5, operator: ">", rightValue: 5 },
+    { input: "5 < 5", leftValue: 5, operator: "<", rightValue: 5 },
+    { input: "5 == 5", leftValue: 5, operator: "==", rightValue: 5 },
+    { input: "5 != 5", leftValue: 5, operator: "!=", rightValue: 5 },
+  ];
+
+  for (const tt of tests) {
+    const l = lexer.New(tt.input);
+
+    const p = parser.New(l);
+
+    const program = p.ParseProgram();
+    checkParserErrors(p);
+
+    if (len(program.Statements) != 1) {
+      chai.fail(
+        `프로그램 명령문 1개 명령문이 아님 len(program.Statements):${len(
+          program.Statements
+        )}`
+      );
+    }
+
+    for (const index in program.Statements) {
+      const t = chai;
+      const stmt = program.Statements[index];
+
+      const ok = stmt.type === "ExpressionStatement";
+      if (!ok) {
+        t.fail(`stmt not *ast.ExpressionStatement. got=${stmt}`);
+      } else {
+        if (!stmt.Expression) {
+          t.fail(`exp not *ast.InfixExpression, got=${stmt.Expression}`);
+        } else {
+          if (stmt.Expression.type !== "InfixExpression") {
+            t.fail(`exp not InfixExpression got=${stmt.Expression.type}`);
+          } else {
+            if (
+              stmt.Expression.Left &&
+              !testIntegerLiteral(stmt.Expression.Left, tt.leftValue)
+            ) {
+              t.fail(`ident.testIntegerLiteral() left error}`);
+            }
+            if (stmt.Expression.Operator !== tt.operator) {
+              t.fail(
+                `exp.Operater is not ${tt.operator}, got=${stmt.Expression.Operator}`
+              );
+            }
+            if (
+              stmt.Expression.Right &&
+              !testIntegerLiteral(stmt.Expression.Right, tt.rightValue)
+            ) {
+              t.fail(`ident.testIntegerLiteral() right error}`);
+            }
+          }
+        }
+      }
+    }
+  }
+});

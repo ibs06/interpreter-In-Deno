@@ -13,6 +13,17 @@ export enum Precedences {
   CALL,
 }
 
+const precedenceOfToken = new Map<token.TokenType, Precedences>([
+  [token.token.EQ, Precedences.EQUALS],
+  [token.token.NOT_EQ, Precedences.EQUALS],
+  [token.token.LT, Precedences.LESSGREATER],
+  [token.token.GT, Precedences.LESSGREATER],
+  [token.token.PLUS, Precedences.SUM],
+  [token.token.MINUS, Precedences.SUM],
+  [token.token.SLASH, Precedences.PRODUCT],
+  [token.token.ASTERISK, Precedences.PRODUCT],
+]);
+
 type prefixParseFn = (p: Parser) => ast.Expression;
 type infixParseFn = (p: Parser, left: ast.Expression) => ast.Expression;
 
@@ -36,15 +47,19 @@ export interface Parser {
   parseExpressionStatement(): ast.ExpressionStatement;
   parseExpression(precedence: Precedences): ast.Expression | undefined;
 
+  /**registerPrefix, registerInfix 등록함수는 추가하지 말 것! */
+
   curTokenIs(t: token.TokenType): boolean;
   peekTokenIs(t: token.TokenType): boolean;
   expectPeek(t: token.TokenType): boolean;
   Errors(): string[];
   peekError(t: token.TokenType): void;
   noPrefixParseFnError(t: token.TokenType): void;
+  peekPrecedence(): Precedences;
+  curPrecedence(): Precedences;
 
   registerPrefix(tokenType: token.TokenType, fn: prefixParseFn): void;
-  registerInfix(tokenType: token.TokenType, fn: prefixParseFn): void;
+  registerInfix(tokenType: token.TokenType, fn: infixParseFn): void;
 }
 
 export function New(l: Lexer): Parser {
@@ -59,14 +74,14 @@ export function New(l: Lexer): Parser {
     infixParseFns: new Map<token.TokenType, infixParseFn>(),
 
     nextToken,
-    ParseProgram,
 
+    ParseProgram,
     parseStatement,
+
     parseLetStatement,
     parseReturnStatement,
     parseExpressionStatement,
     parseExpression,
-    parseIdentifier,
 
     curTokenIs,
     peekTokenIs,
@@ -74,6 +89,8 @@ export function New(l: Lexer): Parser {
     Errors,
     peekError,
     noPrefixParseFnError,
+    peekPrecedence,
+    curPrecedence,
 
     registerPrefix,
     registerInfix,
@@ -83,6 +100,15 @@ export function New(l: Lexer): Parser {
   p.registerPrefix(token.token.INT, parseIntegerLiteral);
   p.registerPrefix(token.token.BANG, parsePrefixExpression);
   p.registerPrefix(token.token.MINUS, parsePrefixExpression);
+
+  p.registerInfix(token.token.PLUS, parseInfixExpression);
+  p.registerInfix(token.token.MINUS, parseInfixExpression);
+  p.registerInfix(token.token.SLASH, parseInfixExpression);
+  p.registerInfix(token.token.ASTERISK, parseInfixExpression);
+  p.registerInfix(token.token.EQ, parseInfixExpression);
+  p.registerInfix(token.token.NOT_EQ, parseInfixExpression);
+  p.registerInfix(token.token.LT, parseInfixExpression);
+  p.registerInfix(token.token.GT, parseInfixExpression);
 
   /*
   두번 호출 이유
@@ -180,13 +206,30 @@ function parseExpression(
   precedence: Precedences
 ): ast.Expression | undefined {
   const p = this;
-  if (p.prefixParseFns.has(p.curToken.Type)) {
-    const prefix: prefixParseFn = p.prefixParseFns.get(p.curToken.Type)!;
-    // prefix, infix호출시 Golang 리시버에 해당하는 *Parser p파라미터로 전달하기!
-    return prefix(p);
-  } else {
+  if (!p.prefixParseFns.has(p.curToken.Type)) {
     p.noPrefixParseFnError(p.curToken.Type);
     return undefined;
+  } else {
+    const prefix: prefixParseFn = p.prefixParseFns.get(p.curToken.Type)!;
+
+    // prefix, infix호출시 Golang 리시버에 해당하는 *Parser p파라미터로 전달하기!
+    let leftExp = prefix(p);
+    while (
+      !p.peekTokenIs(token.token.SEMICOLON) &&
+      precedence < p.peekPrecedence()
+    ) {
+      if (!p.infixParseFns.has(p.peekToken.Type)) {
+        console.log(11);
+        return leftExp;
+      } else {
+        const infix: infixParseFn = p.infixParseFns.get(p.peekToken.Type)!;
+
+        p.nextToken();
+
+        leftExp = infix(p, leftExp);
+      }
+    }
+    return leftExp;
   }
 }
 
@@ -216,6 +259,20 @@ function parsePrefixExpression(p: Parser): ast.Expression {
 
   p.nextToken();
   expression.Right = p.parseExpression(Precedences.PREFIX);
+
+  return expression;
+}
+
+function parseInfixExpression(p: Parser, left: ast.Expression): ast.Expression {
+  const expression = ast.InfixExpressionNew(
+    p.curToken,
+    p.curToken.Literal,
+    left
+  );
+
+  const precedence = p.curPrecedence();
+  p.nextToken();
+  expression.Right = p.parseExpression(precedence);
 
   return expression;
 }
@@ -257,6 +314,20 @@ function noPrefixParseFnError(this: Parser, t: token.TokenType) {
   const p = this;
   const msg = `no prefix parse function for ${t}`;
   p.errors.push(msg);
+}
+
+function peekPrecedence(this: Parser): Precedences {
+  const p = this;
+  return precedenceOfToken.has(p.peekToken.Type)
+    ? (precedenceOfToken.get(p.peekToken.Type) as Precedences)
+    : Precedences.LOWEST;
+}
+
+function curPrecedence(this: Parser): Precedences {
+  const p = this;
+  return precedenceOfToken.has(p.curToken.Type)
+    ? (precedenceOfToken.get(p.curToken.Type) as Precedences)
+    : Precedences.LOWEST;
 }
 
 function registerPrefix(
