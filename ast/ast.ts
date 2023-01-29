@@ -10,7 +10,12 @@ export interface NodeObj {
 }
 
 export type Statement = LetStatement | ReturnStatement | ExpressionStatement;
-export type Expression = Identifier | IntegerLiteral | PrefixExpression | InfixExpression;
+export type Expression =
+  | Identifier
+  | IntegerLiteral
+  | PrefixExpression
+  | InfixExpression
+  | Boolean;
 
 // 메소드만 공통으로 가지고 있는 값
 // Statement, Expression 두개의 구분은 statementNode, expressionNode 속성 보유여부로 구분하고 type으로 직접 개별 타입을 식별함.
@@ -182,6 +187,25 @@ export function InfixExpressionNew(
     Token: token,
     Operator: op,
     Left: left,
+    expressionNode: function (this: Identifier) {},
+    TokenLiteral: function (this: Identifier) {
+      const i = this;
+      return i.Token.Literal;
+    },
+  };
+}
+
+export interface Boolean extends ExpressionObj {
+  type: "Boolean";
+  Token: Token;
+  Value: boolean;
+}
+
+export function BooleanNew(token: Token, val: boolean): Boolean {
+  return {
+    type: "Boolean",
+    Token: token,
+    Value: val,
     expressionNode: function (this: Identifier) {},
     TokenLiteral: function (this: Identifier) {
       const i = this;

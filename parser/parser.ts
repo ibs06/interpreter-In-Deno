@@ -100,6 +100,8 @@ export function New(l: Lexer): Parser {
   p.registerPrefix(token.token.INT, parseIntegerLiteral);
   p.registerPrefix(token.token.BANG, parsePrefixExpression);
   p.registerPrefix(token.token.MINUS, parsePrefixExpression);
+  p.registerPrefix(token.token.TRUE, parseBoolean);
+  p.registerPrefix(token.token.FALSE, parseBoolean);
 
   p.registerInfix(token.token.PLUS, parseInfixExpression);
   p.registerInfix(token.token.MINUS, parseInfixExpression);
@@ -219,7 +221,6 @@ function parseExpression(
       precedence < p.peekPrecedence()
     ) {
       if (!p.infixParseFns.has(p.peekToken.Type)) {
-        console.log(11);
         return leftExp;
       } else {
         const infix: infixParseFn = p.infixParseFns.get(p.peekToken.Type)!;
@@ -241,6 +242,7 @@ function parseExpression(
 //
 //   return ast.IdentifierNew(p.curToken, p.curToken.Literal);
 // }
+/** p: Parser 면 맵등록 대상, this:Parser면 인터페이스 등록대상 */
 function parseIdentifier(p: Parser): ast.Expression {
   return ast.IdentifierNew(p.curToken, p.curToken.Literal);
 }
@@ -275,6 +277,10 @@ function parseInfixExpression(p: Parser, left: ast.Expression): ast.Expression {
   expression.Right = p.parseExpression(precedence);
 
   return expression;
+}
+
+function parseBoolean(p: Parser): ast.Expression {
+  return ast.BooleanNew(p.curToken, p.curTokenIs(token.token.TRUE));
 }
 
 function curTokenIs(this: Parser, t: token.TokenType): boolean {
