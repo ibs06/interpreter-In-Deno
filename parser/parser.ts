@@ -102,6 +102,7 @@ export function New(l: Lexer): Parser {
   p.registerPrefix(token.token.MINUS, parsePrefixExpression);
   p.registerPrefix(token.token.TRUE, parseBoolean);
   p.registerPrefix(token.token.FALSE, parseBoolean);
+  p.registerPrefix(token.token.LPAREN, parseGroupExpression);
 
   p.registerInfix(token.token.PLUS, parseInfixExpression);
   p.registerInfix(token.token.MINUS, parseInfixExpression);
@@ -281,6 +282,17 @@ function parseInfixExpression(p: Parser, left: ast.Expression): ast.Expression {
 
 function parseBoolean(p: Parser): ast.Expression {
   return ast.BooleanNew(p.curToken, p.curTokenIs(token.token.TRUE));
+}
+
+function parseGroupExpression(p: Parser): ast.Expression {
+  p.nextToken();
+  const exp = p.parseExpression(Precedences.LOWEST)!;
+
+  if (!p.expectPeek(token.token.RPAREN)) {
+    const msg = `could not parse ${p.curToken} to GroupExpr`;
+    p.errors.push(msg);
+  }
+  return exp;
 }
 
 function curTokenIs(this: Parser, t: token.TokenType): boolean {
