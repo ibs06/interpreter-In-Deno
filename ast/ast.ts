@@ -9,13 +9,18 @@ export interface NodeObj {
   TokenLiteral(): string;
 }
 
-export type Statement = LetStatement | ReturnStatement | ExpressionStatement;
+export type Statement =
+  | LetStatement
+  | ReturnStatement
+  | ExpressionStatement
+  | BlockStatement;
 export type Expression =
   | Identifier
   | IntegerLiteral
   | PrefixExpression
   | InfixExpression
-  | Boolean;
+  | Boolean
+  | IfExpression;
 
 // 메소드만 공통으로 가지고 있는 값
 // Statement, Expression 두개의 구분은 statementNode, expressionNode 속성 보유여부로 구분하고 type으로 직접 개별 타입을 식별함.
@@ -102,6 +107,28 @@ export function ExpressionStatementNew(token: Token): ExpressionStatement {
     Token: token,
     statementNode: function (this: ExpressionStatement) {},
     TokenLiteral: function (this: ExpressionStatement) {
+      const ls = this;
+      return ls.Token.Literal;
+    },
+  };
+}
+
+export interface BlockStatement extends StatementObj {
+  type: "BlockStatement";
+  Token: Token;
+  Statements: Statement[];
+}
+
+export function BlockStatementNew(
+  token: Token,
+  statements: Statement[]
+): BlockStatement {
+  return {
+    type: "BlockStatement",
+    Token: token,
+    Statements: statements,
+    statementNode: function (this: BlockStatement) {},
+    TokenLiteral: function (this: BlockStatement) {
       const ls = this;
       return ls.Token.Literal;
     },
@@ -206,6 +233,26 @@ export function BooleanNew(token: Token, val: boolean): Boolean {
     type: "Boolean",
     Token: token,
     Value: val,
+    expressionNode: function (this: Identifier) {},
+    TokenLiteral: function (this: Identifier) {
+      const i = this;
+      return i.Token.Literal;
+    },
+  };
+}
+
+export interface IfExpression extends ExpressionObj {
+  type: "IfExpression";
+  Token: Token;
+  Condition?: Expression;
+  Consequence?: BlockStatement;
+  Alternative?: BlockStatement;
+}
+
+export function IfExpressionNew(token: Token): IfExpression {
+  return {
+    type: "IfExpression",
+    Token: token,
     expressionNode: function (this: Identifier) {},
     TokenLiteral: function (this: Identifier) {
       const i = this;

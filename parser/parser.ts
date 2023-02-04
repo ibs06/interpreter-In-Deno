@@ -46,6 +46,7 @@ export interface Parser {
   parseReturnStatement(): ast.ReturnStatement;
   parseExpressionStatement(): ast.ExpressionStatement;
   parseExpression(precedence: Precedences): ast.Expression | undefined;
+  parseBlockStatement(): ast.BlockStatement;
 
   /**registerPrefix, registerInfix 등록함수는 추가하지 말 것! */
 
@@ -82,6 +83,7 @@ export function New(l: Lexer): Parser {
     parseReturnStatement,
     parseExpressionStatement,
     parseExpression,
+    parseBlockStatement,
 
     curTokenIs,
     peekTokenIs,
@@ -103,6 +105,7 @@ export function New(l: Lexer): Parser {
   p.registerPrefix(token.token.TRUE, parseBoolean);
   p.registerPrefix(token.token.FALSE, parseBoolean);
   p.registerPrefix(token.token.LPAREN, parseGroupExpression);
+  p.registerPrefix(token.token.IF, parseIfExpression);
 
   p.registerInfix(token.token.PLUS, parseInfixExpression);
   p.registerInfix(token.token.MINUS, parseInfixExpression);
@@ -235,6 +238,27 @@ function parseExpression(
   }
 }
 
+function parseBlockStatement(this: Parser): ast.BlockStatement {
+  const p = this;
+
+  const block = ast.BlockStatementNew(p.curToken, []);
+
+  p.nextToken();
+
+  while (
+    !p.curTokenIs(token.token.RBRACE) &&
+    p.curToken.Type != token.token.EOF
+  ) {
+    const stmt = p.parseStatement();
+    if (stmt != null) {
+      block.Statements.push(stmt);
+    }
+    p.nextToken();
+  }
+
+  return block;
+}
+
 // function parseIdentifier(this: Parser): ast.Expression {
 //   const p = this;
 //
@@ -289,10 +313,37 @@ function parseGroupExpression(p: Parser): ast.Expression {
   const exp = p.parseExpression(Precedences.LOWEST)!;
 
   if (!p.expectPeek(token.token.RPAREN)) {
-    const msg = `could not parse ${p.curToken} to GroupExpr`;
+    const msg = `could not parse ${p.curToken} to parseGroupExpression`;
     p.errors.push(msg);
   }
   return exp;
+}
+
+function parseIfExpression(p: Parser): ast.Expression {
+  const expression = ast.IfExpressionNew(p.curToken)!;
+
+  if (!p.expectPeek(token.token.LPAREN)) {
+    const msg = `could not parse ${p.curToken} to parseIfExpression`;
+    p.errors.push(msg);
+  }
+
+  p.nextToken();
+
+  expression.Condition = p.parseExpression(Precedences.LOWEST);
+
+  if (!p.expectPeek(token.token.RPAREN)) {
+    const msg = `could not parse ${p.curToken} to parseIfExpression`;
+    p.errors.push(msg);
+  }
+
+  if (!p.expectPeek(token.token.LBRACE)) {
+    const msg = `could not parse ${p.curToken} to parseIfExpression`;
+    p.errors.push(msg);
+  }
+
+  expression.Consequence = p.parseBlockStatement();
+
+  return expression;
 }
 
 function curTokenIs(this: Parser, t: token.TokenType): boolean {

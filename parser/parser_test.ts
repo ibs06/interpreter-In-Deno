@@ -707,13 +707,13 @@ Deno.test("parser 그룹표현식 파서 테스트 ", async () => {
         t.fail(`stmt not *ast.ExpressionStatement. got=${stmt}`);
       } else {
         if (!stmt.Expression) {
-          t.fail(`exp not *ast.PrefixExpression, got=${stmt.Expression}`);
+          t.fail(`exp not *ast.GroupExpression, got=${stmt.Expression}`);
         } else {
           if (
             stmt.Expression.type !== "InfixExpression" &&
             stmt.Expression.type !== "PrefixExpression"
           ) {
-            t.fail(`exp not PrefixExpression got=${stmt.Expression.type}`);
+            t.fail(`exp not GroupExpression got=${stmt.Expression.type}`);
           } else {
             // console.log(`stmt`, stmt);
             // stmt {
@@ -784,6 +784,79 @@ Deno.test("parser 그룹표현식 파서 테스트 ", async () => {
             //     }
             //   }
             // }
+          }
+        }
+      }
+    }
+  }
+});
+
+Deno.test("parser 조건표현식 파서 테스트 ", async () => {
+  const tests: {
+    input: string;
+  }[] = [{ input: "if (x < y) { x }" }];
+
+  for (const tt of tests) {
+    console.log(1);
+    const l = lexer.New(tt.input);
+    console.log(2);
+
+    const p = parser.New(l);
+
+    const program = p.ParseProgram();
+    checkParserErrors(p);
+
+    if (len(program.Statements) != 1) {
+      chai.fail(
+        `프로그램 명령문 1개 명령문이 아님 len(program.Statements):${len(
+          program.Statements
+        )}`
+      );
+    }
+    for (const index in program.Statements) {
+      const t = chai;
+      const stmt = program.Statements[index];
+
+      const ok = stmt.type === "ExpressionStatement";
+      if (!ok) {
+        t.fail(`stmt not *ast.ExpressionStatement. got=${stmt}`);
+      } else {
+        if (!stmt.Expression) {
+          t.fail(`exp not *ast.IfExpression, got=${stmt.Expression}`);
+        } else {
+          if (stmt.Expression.type !== "IfExpression") {
+            t.fail(`exp not IfExpression got=${stmt.Expression.type}`);
+          } else {
+            if (
+              stmt.Expression.Condition &&
+              stmt.Expression.Condition.type !== "InfixExpression"
+            ) {
+              t.fail(`exp not InfixExpression got=${stmt.Expression.type}`);
+            } else {
+              if (
+                stmt.Expression.Condition &&
+                stmt.Expression.Condition.Left &&
+                stmt.Expression.Condition.Left.TokenLiteral() !== "x"
+              ) {
+                t.fail(`ident.InfixExpression() left error}`);
+              }
+              if (
+                stmt.Expression.Condition &&
+                stmt.Expression.Condition.Operator &&
+                stmt.Expression.Condition.Operator !== "<"
+              ) {
+                t.fail(`ident.InfixExpression() Operator error}`);
+              }
+              if (
+                stmt.Expression.Condition &&
+                stmt.Expression.Condition.Right &&
+                stmt.Expression.Condition.Right.TokenLiteral() !== "y"
+              ) {
+                t.fail(`ident.InfixExpression() right error}`);
+              }
+              //HACK: 일단 테스트함.
+              //TODO: 더이상 안되겟다 테스트 함수 모듈화하기
+            }
           }
         }
       }
