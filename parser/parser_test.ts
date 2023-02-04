@@ -651,3 +651,142 @@ Deno.test("parser 불린전위연산자 파서 테스트 ", async () => {
     }
   }
 });
+
+Deno.test("parser 그룹표현식 파서 테스트 ", async () => {
+  const tests: {
+    input: string;
+    expected: string;
+  }[] = [
+    {
+      input: "1 + (2 + 3) + 4",
+      expected: "((1 + (2 + 3)) + 4)",
+    },
+    {
+      input: "(5 + 5) * 2",
+      expected: "((5 + 5) * 2)",
+    },
+    {
+      input: "2 / (5 + 5)",
+      expected: "(2 / (5 + 5))",
+    },
+    {
+      input: "(5 + 5) * 2 * (5 + 5)",
+      expected: "(((5 + 5) * 2) * (5 + 5))",
+    },
+    {
+      input: "-(5 + 5)",
+      expected: "(-(5 + 5))",
+    },
+    {
+      input: "!(true == true)",
+      expected: "(!(true == true))",
+    },
+  ];
+
+  for (const tt of tests) {
+    const l = lexer.New(tt.input);
+
+    const p = parser.New(l);
+
+    const program = p.ParseProgram();
+    checkParserErrors(p);
+
+    if (len(program.Statements) != 1) {
+      chai.fail(
+        `프로그램 명령문 1개 명령문이 아님 len(program.Statements):${len(
+          program.Statements
+        )}`
+      );
+    }
+    for (const index in program.Statements) {
+      const t = chai;
+      const stmt = program.Statements[index];
+
+      const ok = stmt.type === "ExpressionStatement";
+      if (!ok) {
+        t.fail(`stmt not *ast.ExpressionStatement. got=${stmt}`);
+      } else {
+        if (!stmt.Expression) {
+          t.fail(`exp not *ast.PrefixExpression, got=${stmt.Expression}`);
+        } else {
+          if (
+            stmt.Expression.type !== "InfixExpression" &&
+            stmt.Expression.type !== "PrefixExpression"
+          ) {
+            t.fail(`exp not PrefixExpression got=${stmt.Expression.type}`);
+          } else {
+            // console.log(`stmt`, stmt);
+            // stmt {
+            //   type: "ExpressionStatement",
+            //   Token: { Type: "-", Literal: "-" },
+            //   statementNode: [Function: statementNode],
+            //   TokenLiteral: [Function: TokenLiteral],
+            //   Expression: {
+            //     type: "PrefixExpression",
+            //     Token: { Type: "-", Literal: "-" },
+            //     Operator: "-",
+            //     expressionNode: [Function: expressionNode],
+            //     TokenLiteral: [Function: TokenLiteral],
+            //     Right: {
+            //       type: "InfixExpression",
+            //       Token: { Type: "+", Literal: "+" },
+            //       Operator: "+",
+            //       Left: {
+            //         type: "IntegerLiteral",
+            //         Token: [Object],
+            //         Value: 5,
+            //         expressionNode: [Function: expressionNode],
+            //         TokenLiteral: [Function: TokenLiteral]
+            //       },
+            //       expressionNode: [Function: expressionNode],
+            //       TokenLiteral: [Function: TokenLiteral],
+            //       Right: {
+            //         type: "IntegerLiteral",
+            //         Token: [Object],
+            //         Value: 5,
+            //         expressionNode: [Function: expressionNode],
+            //         TokenLiteral: [Function: TokenLiteral]
+            //       }
+            //     }
+            //   }
+            // }
+            // stmt {
+            //   type: "ExpressionStatement",
+            //   Token: { Type: "!", Literal: "!" },
+            //   statementNode: [Function: statementNode],
+            //   TokenLiteral: [Function: TokenLiteral],
+            //   Expression: {
+            //     type: "PrefixExpression",
+            //     Token: { Type: "!", Literal: "!" },
+            //     Operator: "!",
+            //     expressionNode: [Function: expressionNode],
+            //     TokenLiteral: [Function: TokenLiteral],
+            //     Right: {
+            //       type: "InfixExpression",
+            //       Token: { Type: "==", Literal: "==" },
+            //       Operator: "==",
+            //       Left: {
+            //         type: "Boolean",
+            //         Token: [Object],
+            //         Value: true,
+            //         expressionNode: [Function: expressionNode],
+            //         TokenLiteral: [Function: TokenLiteral]
+            //       },
+            //       expressionNode: [Function: expressionNode],
+            //       TokenLiteral: [Function: TokenLiteral],
+            //       Right: {
+            //         type: "Boolean",
+            //         Token: [Object],
+            //         Value: true,
+            //         expressionNode: [Function: expressionNode],
+            //         TokenLiteral: [Function: TokenLiteral]
+            //       }
+            //     }
+            //   }
+            // }
+          }
+        }
+      }
+    }
+  }
+});
