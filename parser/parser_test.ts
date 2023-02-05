@@ -797,9 +797,7 @@ Deno.test("parser 조건표현식 파서 테스트 ", async () => {
   }[] = [{ input: "if (x < y) { x }" }];
 
   for (const tt of tests) {
-    console.log(1);
     const l = lexer.New(tt.input);
-    console.log(2);
 
     const p = parser.New(l);
 
@@ -833,29 +831,40 @@ Deno.test("parser 조건표현식 파서 테스트 ", async () => {
             ) {
               t.fail(`exp not InfixExpression got=${stmt.Expression.type}`);
             } else {
-              if (
-                stmt.Expression.Condition &&
-                stmt.Expression.Condition.Left &&
-                stmt.Expression.Condition.Left.TokenLiteral() !== "x"
-              ) {
-                t.fail(`ident.InfixExpression() left error}`);
+              testInfixExpression(stmt.Expression, "x", "<", "y");
+            }
+
+            if (
+              stmt.Expression.Consequence &&
+              len(stmt.Expression.Consequence.Statements) != 1
+            ) {
+              chai.fail(
+                `블록 명령문 1개 명령문이 아님 len(program.Statements):${len(
+                  stmt.Expression.Consequence.Statements
+                )}`
+              );
+            }
+
+            if (stmt.Expression.Consequence) {
+              const ok =
+                stmt.Expression.Consequence.Statements[0].type ===
+                "ExpressionStatement";
+              if (!ok) {
+                t.fail(`stmt not *ast.ExpressionStatement. got=${stmt}`);
+              } else {
+                const consequence = (
+                  stmt.Expression.Consequence
+                    .Statements[0] as ast.ExpressionStatement
+                ).Expression;
+
+                if (consequence) {
+                  testIdentifier(consequence, "x");
+                }
               }
-              if (
-                stmt.Expression.Condition &&
-                stmt.Expression.Condition.Operator &&
-                stmt.Expression.Condition.Operator !== "<"
-              ) {
-                t.fail(`ident.InfixExpression() Operator error}`);
-              }
-              if (
-                stmt.Expression.Condition &&
-                stmt.Expression.Condition.Right &&
-                stmt.Expression.Condition.Right.TokenLiteral() !== "y"
-              ) {
-                t.fail(`ident.InfixExpression() right error}`);
-              }
-              //HACK: 일단 테스트함.
-              //TODO: 더이상 안되겟다 테스트 함수 모듈화하기
+            }
+
+            if (typeof stmt.Expression.Alternative !== "undefined") {
+              t.fail(`stmt not undefined. got=${stmt.Expression.Alternative}`);
             }
           }
         }
@@ -863,3 +872,61 @@ Deno.test("parser 조건표현식 파서 테스트 ", async () => {
     }
   }
 });
+
+function testInfixExpression(
+  Expression: ast.IfExpression,
+  left: string,
+  op: string,
+  right: string
+): boolean {
+  const t = chai;
+
+  if (Expression.Condition && Expression.Condition.type !== "InfixExpression") {
+    t.fail(`exp not InfixExpression got=${Expression.type}`);
+  }
+  if (Expression.Condition && Expression.Condition.type !== "InfixExpression") {
+    t.fail(`exp not InfixExpression got=${Expression.type}`);
+  } else {
+    if (
+      Expression.Condition &&
+      Expression.Condition.Left &&
+      Expression.Condition.Left.TokenLiteral() !== left
+    ) {
+      t.fail(`ident.InfixExpression() left error}`);
+    }
+    if (
+      Expression.Condition &&
+      Expression.Condition.Operator &&
+      Expression.Condition.Operator !== op
+    ) {
+      t.fail(`ident.InfixExpression() Operator error}`);
+    }
+    if (
+      Expression.Condition &&
+      Expression.Condition.Right &&
+      Expression.Condition.Right.TokenLiteral() !== right
+    ) {
+      t.fail(`ident.InfixExpression() right error}`);
+    }
+  }
+  return true;
+}
+
+function testIdentifier(Expression: ast.Expression, name: string): boolean {
+  const t = chai;
+  if (!Expression) {
+    t.fail(`exp not *ast.Identifier, got=${Expression}`);
+  } else {
+    if (Expression.type !== "Identifier") {
+      t.fail(`exp not Identifier got=${Expression.type}`);
+    } else {
+      if (Expression.Value !== name) {
+        t.fail(`ident.Value error, got=${Expression.Value}`);
+      }
+      if (Expression.TokenLiteral() !== name) {
+        t.fail(`ident.TokenLiteral() error, got=${Expression.TokenLiteral()}`);
+      }
+    }
+  }
+  return true;
+}
