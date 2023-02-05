@@ -313,7 +313,7 @@ function parseGroupExpression(p: Parser): ast.Expression {
   const exp = p.parseExpression(Precedences.LOWEST)!;
 
   if (!p.expectPeek(token.token.RPAREN)) {
-    const msg = `could not parse ${p.curToken} to parseGroupExpression`;
+    const msg = `could not parse ${p.curToken} to parseGroupExpression 1`;
     p.errors.push(msg);
   }
   return exp;
@@ -323,7 +323,7 @@ function parseIfExpression(p: Parser): ast.Expression {
   const expression = ast.IfExpressionNew(p.curToken)!;
 
   if (!p.expectPeek(token.token.LPAREN)) {
-    const msg = `could not parse ${p.curToken} to parseIfExpression`;
+    const msg = `could not parse ${p.curToken} to parseIfExpression 2`;
     p.errors.push(msg);
   }
 
@@ -332,16 +332,27 @@ function parseIfExpression(p: Parser): ast.Expression {
   expression.Condition = p.parseExpression(Precedences.LOWEST);
 
   if (!p.expectPeek(token.token.RPAREN)) {
-    const msg = `could not parse ${p.curToken} to parseIfExpression`;
+    const msg = `could not parse ${p.curToken} to parseIfExpression 3`;
     p.errors.push(msg);
   }
 
   if (!p.expectPeek(token.token.LBRACE)) {
-    const msg = `could not parse ${p.curToken} to parseIfExpression`;
+    const msg = `could not parse ${p.curToken} to parseIfExpression 4`;
     p.errors.push(msg);
   }
 
   expression.Consequence = p.parseBlockStatement();
+
+  if (p.peekTokenIs(token.token.ELSE)) {
+    p.nextToken();
+
+    if (!p.expectPeek(token.token.LBRACE)) {
+      const msg = `could not parse ${p.curToken} to parseIfExpression 5`;
+      p.errors.push(msg);
+    }
+
+    expression.Alternative = p.parseBlockStatement();
+  }
 
   return expression;
 }

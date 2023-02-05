@@ -791,7 +791,7 @@ Deno.test("parser 그룹표현식 파서 테스트 ", async () => {
   }
 });
 
-Deno.test("parser 조건표현식 파서 테스트 ", async () => {
+Deno.test("parser 조건표현식 파서 테스트 1 ", async () => {
   const tests: {
     input: string;
   }[] = [{ input: "if (x < y) { x }" }];
@@ -865,6 +865,104 @@ Deno.test("parser 조건표현식 파서 테스트 ", async () => {
 
             if (typeof stmt.Expression.Alternative !== "undefined") {
               t.fail(`stmt not undefined. got=${stmt.Expression.Alternative}`);
+            }
+          }
+        }
+      }
+    }
+  }
+});
+
+Deno.test("parser 조건표현식 파서 테스트 2", async () => {
+  const tests: {
+    input: string;
+  }[] = [{ input: "if (x < y) { x } else { y }" }];
+
+  for (const tt of tests) {
+    const l = lexer.New(tt.input);
+
+    const p = parser.New(l);
+
+    const program = p.ParseProgram();
+    checkParserErrors(p);
+
+    if (len(program.Statements) != 1) {
+      chai.fail(
+        `프로그램 명령문 1개 명령문이 아님 len(program.Statements):${len(
+          program.Statements
+        )}`
+      );
+    }
+    for (const index in program.Statements) {
+      const t = chai;
+      const stmt = program.Statements[index];
+
+      const ok = stmt.type === "ExpressionStatement";
+      if (!ok) {
+        t.fail(`stmt not *ast.ExpressionStatement. got=${stmt}`);
+      } else {
+        if (!stmt.Expression) {
+          t.fail(`exp not *ast.IfExpression, got=${stmt.Expression}`);
+        } else {
+          if (stmt.Expression.type !== "IfExpression") {
+            t.fail(`exp not IfExpression got=${stmt.Expression.type}`);
+          } else {
+            if (
+              stmt.Expression.Condition &&
+              stmt.Expression.Condition.type !== "InfixExpression"
+            ) {
+              t.fail(`exp not InfixExpression got=${stmt.Expression.type}`);
+            } else {
+              testInfixExpression(stmt.Expression, "x", "<", "y");
+            }
+
+            if (
+              stmt.Expression.Consequence &&
+              len(stmt.Expression.Consequence.Statements) != 1
+            ) {
+              chai.fail(
+                `블록 명령문 1개 명령문이 아님 len(program.Statements):${len(
+                  stmt.Expression.Consequence.Statements
+                )}`
+              );
+            }
+
+            if (stmt.Expression.Consequence) {
+              const ok =
+                stmt.Expression.Consequence.Statements[0].type ===
+                "ExpressionStatement";
+              if (!ok) {
+                t.fail(`stmt not *ast.ExpressionStatement. got=${stmt}`);
+              } else {
+                const consequence = (
+                  stmt.Expression.Consequence
+                    .Statements[0] as ast.ExpressionStatement
+                ).Expression;
+
+                if (consequence) {
+                  testIdentifier(consequence, "x");
+                }
+              }
+            }
+
+            if (typeof stmt.Expression.Alternative === "undefined") {
+              t.fail(`stmt is undefined. got=${stmt.Expression.Alternative}`);
+            } else {
+              const ok =
+                stmt.Expression.Alternative.Statements[0].type ===
+                "ExpressionStatement";
+              if (!ok) {
+                t.fail(`stmt not *ast.ExpressionStatement. got=${stmt}`);
+              } else {
+                const alternative = (
+                  stmt.Expression.Alternative
+                    .Statements[0] as ast.ExpressionStatement
+                ).Expression;
+
+                if (alternative) {
+                  testIdentifier(alternative, "y");
+                }
+              }
             }
           }
         }
