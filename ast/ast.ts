@@ -20,7 +20,8 @@ export type Expression =
   | PrefixExpression
   | InfixExpression
   | Boolean
-  | IfExpression;
+  | IfExpression
+  | FunctionLiteralExpression;
 
 // 메소드만 공통으로 가지고 있는 값
 // Statement, Expression 두개의 구분은 statementNode, expressionNode 속성 보유여부로 구분하고 type으로 직접 개별 타입을 식별함.
@@ -252,6 +253,27 @@ export interface IfExpression extends ExpressionObj {
 export function IfExpressionNew(token: Token): IfExpression {
   return {
     type: "IfExpression",
+    Token: token,
+    expressionNode: function (this: Identifier) {},
+    TokenLiteral: function (this: Identifier) {
+      const i = this;
+      return i.Token.Literal;
+    },
+  };
+}
+
+export interface FunctionLiteralExpression extends ExpressionObj {
+  type: "FunctionLiteralExpression";
+  Token: Token;
+  Parameters?: Identifier[];
+  Body?: BlockStatement;
+}
+
+export function FunctionLiteralExpressionNew(
+  token: Token
+): FunctionLiteralExpression {
+  return {
+    type: "FunctionLiteralExpression",
     Token: token,
     expressionNode: function (this: Identifier) {},
     TokenLiteral: function (this: Identifier) {

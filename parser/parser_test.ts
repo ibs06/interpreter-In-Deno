@@ -831,7 +831,7 @@ Deno.test("parser 조건표현식 파서 테스트 1 ", async () => {
             ) {
               t.fail(`exp not InfixExpression got=${stmt.Expression.type}`);
             } else {
-              testInfixExpression(stmt.Expression, "x", "<", "y");
+              testInfixExpression(stmt.Expression.Condition!, "x", "<", "y");
             }
 
             if (
@@ -913,7 +913,7 @@ Deno.test("parser 조건표현식 파서 테스트 2", async () => {
             ) {
               t.fail(`exp not InfixExpression got=${stmt.Expression.type}`);
             } else {
-              testInfixExpression(stmt.Expression, "x", "<", "y");
+              testInfixExpression(stmt.Expression.Condition!, "x", "<", "y");
             }
 
             if (
@@ -972,37 +972,35 @@ Deno.test("parser 조건표현식 파서 테스트 2", async () => {
 });
 
 function testInfixExpression(
-  Expression: ast.IfExpression,
+  Expression: ast.InfixExpression,
   left: string,
   op: string,
   right: string
 ): boolean {
   const t = chai;
 
-  if (Expression.Condition && Expression.Condition.type !== "InfixExpression") {
+  if (Expression && Expression.type !== "InfixExpression") {
     t.fail(`exp not InfixExpression got=${Expression.type}`);
   }
-  if (Expression.Condition && Expression.Condition.type !== "InfixExpression") {
+  if (Expression && Expression.type !== "InfixExpression") {
     t.fail(`exp not InfixExpression got=${Expression.type}`);
   } else {
     if (
-      Expression.Condition &&
-      Expression.Condition.Left &&
-      Expression.Condition.Left.TokenLiteral() !== left
+      Expression &&
+      Expression.Left &&
+      Expression.Left.TokenLiteral() !== left
     ) {
       t.fail(`ident.InfixExpression() left error}`);
     }
-    if (
-      Expression.Condition &&
-      Expression.Condition.Operator &&
-      Expression.Condition.Operator !== op
-    ) {
-      t.fail(`ident.InfixExpression() Operator error}`);
+    if (Expression && Expression.Operator && Expression.Operator !== op) {
+      t.fail(
+        `ident.InfixExpression() Operator error expect:[${op}], got:[${Expression.Operator}]]`
+      );
     }
     if (
-      Expression.Condition &&
-      Expression.Condition.Right &&
-      Expression.Condition.Right.TokenLiteral() !== right
+      Expression &&
+      Expression.Right &&
+      Expression.Right.TokenLiteral() !== right
     ) {
       t.fail(`ident.InfixExpression() right error}`);
     }
@@ -1019,12 +1017,159 @@ function testIdentifier(Expression: ast.Expression, name: string): boolean {
       t.fail(`exp not Identifier got=${Expression.type}`);
     } else {
       if (Expression.Value !== name) {
-        t.fail(`ident.Value error, got=${Expression.Value}`);
+        t.fail(`ident.Value error, expect=${name} got=${Expression.Value}`);
       }
       if (Expression.TokenLiteral() !== name) {
-        t.fail(`ident.TokenLiteral() error, got=${Expression.TokenLiteral()}`);
+        t.fail(
+          `ident.TokenLiteral() error, expect=${name} got=${Expression.TokenLiteral()}`
+        );
       }
     }
   }
   return true;
 }
+
+Deno.test("parser 함수리터럴 파서 테스트", async () => {
+  const tests: {
+    input: string;
+  }[] = [{ input: "fn(x, y) { x + y; }" }];
+
+  for (const tt of tests) {
+    const l = lexer.New(tt.input);
+
+    const p = parser.New(l);
+
+    const program = p.ParseProgram();
+    checkParserErrors(p);
+
+    if (len(program.Statements) != 1) {
+      chai.fail(
+        `프로그램 명령문 1개 명령문이 아님 len(program.Statements):${len(
+          program.Statements
+        )}`
+      );
+    }
+    for (const index in program.Statements) {
+      const t = chai;
+      const stmt = program.Statements[index];
+
+      const ok = stmt.type === "ExpressionStatement";
+      if (!ok) {
+        t.fail(`stmt not *ast.ExpressionStatement. got=${stmt}`);
+      } else {
+        // console.log(`stmt`, stmt);
+        if (!stmt.Expression) {
+          t.fail(
+            `exp not *ast.FunctionLiteralExpression, got=${stmt.Expression}`
+          );
+        } else {
+          if (stmt.Expression.type !== "FunctionLiteralExpression") {
+            t.fail(
+              `exp not FunctionLiteralExpression got=${stmt.Expression.type}`
+            );
+          } else {
+            if (stmt.Expression.Parameters) {
+              if (len(stmt.Expression.Parameters) != 2) {
+                chai.fail(
+                  `함수 파라미터개수 불일치:${len(stmt.Expression.Parameters)}`
+                );
+              }
+              testIdentifier(stmt.Expression.Parameters[0], "x");
+              testIdentifier(stmt.Expression.Parameters[1], "y");
+            }
+
+            if (
+              stmt.Expression.Body &&
+              len(stmt.Expression.Body.Statements) != 1
+            ) {
+              chai.fail(
+                `블록 명령문 1개 명령문이 아님 len(program.Statements):${len(
+                  stmt.Expression.Body.Statements
+                )}`
+              );
+            }
+
+            if (stmt.Expression.Body) {
+              const ok =
+                stmt.Expression.Body.Statements[0].type ===
+                "ExpressionStatement";
+              if (!ok) {
+                t.fail(`stmt not *ast.ExpressionStatement. got=${stmt}`);
+              } else {
+                const consequence = (
+                  stmt.Expression.Body.Statements[0] as ast.ExpressionStatement
+                ).Expression;
+
+                if (consequence) {
+                  testInfixExpression(
+                    consequence as ast.InfixExpression,
+                    "x",
+                    "+",
+                    "y"
+                  );
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+});
+
+Deno.test("parser 함수리터럴파서 파라미터 경계조건 테스트", async () => {
+  const tests: {
+    input: string;
+    expectedParams: string[];
+  }[] = [
+    { input: "fn() {}", expectedParams: [] },
+    { input: "fn(x) {}", expectedParams: ["x"] },
+    { input: "fn(x, y, z) {}", expectedParams: ["x", "y", "z"] },
+  ];
+
+  for (const tt of tests) {
+    const l = lexer.New(tt.input);
+
+    const p = parser.New(l);
+
+    const program = p.ParseProgram();
+    checkParserErrors(p);
+
+    for (const index in program.Statements) {
+      const t = chai;
+      const stmt = program.Statements[index];
+
+      const ok = stmt.type === "ExpressionStatement";
+      if (!ok) {
+        t.fail(`stmt not *ast.ExpressionStatement. got=${stmt}`);
+      } else {
+        // console.log(`stmt`, stmt);
+        if (!stmt.Expression) {
+          t.fail(
+            `exp not *ast.FunctionLiteralExpression, got=${stmt.Expression}`
+          );
+        } else {
+          if (stmt.Expression.type !== "FunctionLiteralExpression") {
+            t.fail(
+              `exp not FunctionLiteralExpression got=${stmt.Expression.type}`
+            );
+          } else {
+            if (stmt.Expression.Parameters) {
+              if (len(stmt.Expression.Parameters) != len(tt.expectedParams)) {
+                chai.fail(
+                  `함수 파라미터개수 불일치! expect: ${len(
+                    tt.expectedParams
+                  )}, got ${len(stmt.Expression.Parameters)}`
+                );
+              }
+
+              stmt.Expression.Parameters.forEach((ident, i) => {
+                testIdentifier(ident, tt.expectedParams[i]);
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+});

@@ -106,6 +106,7 @@ export function New(l: Lexer): Parser {
   p.registerPrefix(token.token.FALSE, parseBoolean);
   p.registerPrefix(token.token.LPAREN, parseGroupExpression);
   p.registerPrefix(token.token.IF, parseIfExpression);
+  p.registerPrefix(token.token.FUNCTION, parseFunctionLiteral);
 
   p.registerInfix(token.token.PLUS, parseInfixExpression);
   p.registerInfix(token.token.MINUS, parseInfixExpression);
@@ -320,7 +321,7 @@ function parseGroupExpression(p: Parser): ast.Expression {
 }
 
 function parseIfExpression(p: Parser): ast.Expression {
-  const expression = ast.IfExpressionNew(p.curToken)!;
+  const expression = ast.IfExpressionNew(p.curToken);
 
   if (!p.expectPeek(token.token.LPAREN)) {
     const msg = `could not parse ${p.curToken} to parseIfExpression 2`;
@@ -355,6 +356,54 @@ function parseIfExpression(p: Parser): ast.Expression {
   }
 
   return expression;
+}
+
+function parseFunctionLiteral(p: Parser): ast.Expression {
+  const lit = ast.FunctionLiteralExpressionNew(p.curToken);
+
+  if (!p.expectPeek(token.token.LPAREN)) {
+    const msg = `could not parse ${p.curToken} to parseFunctionLiteral`;
+    p.errors.push(msg);
+  }
+
+  lit.Parameters = parseFunctionParameters(p);
+
+  if (!p.expectPeek(token.token.LBRACE)) {
+    const msg = `could not parse ${p.curToken} to parseFunctionLiteral`;
+    p.errors.push(msg);
+  }
+
+  lit.Body = p.parseBlockStatement();
+
+  return lit;
+}
+
+function parseFunctionParameters(p: Parser): ast.Identifier[] {
+  const identifiers: ast.Identifier[] = [];
+
+  if (p.peekTokenIs(token.token.RPAREN)) {
+    p.nextToken();
+    return identifiers;
+  }
+
+  p.nextToken();
+
+  const ident = ast.IdentifierNew(p.curToken, p.curToken.Literal);
+  identifiers.push(ident);
+
+  while (p.peekTokenIs(token.token.COMMA)) {
+    p.nextToken();
+    p.nextToken();
+
+    const ident = ast.IdentifierNew(p.curToken, p.curToken.Literal);
+    identifiers.push(ident);
+  }
+
+  if (!p.expectPeek(token.token.RPAREN)) {
+    const msg = `could not parse ${p.curToken} to parseFunctionLiteral`;
+    p.errors.push(msg);
+  }
+  return identifiers;
 }
 
 function curTokenIs(this: Parser, t: token.TokenType): boolean {
